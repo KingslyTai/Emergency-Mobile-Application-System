@@ -41,6 +41,7 @@ fun EmergencyScreen(
     onNavigateToVolunteerService: () -> Unit,
     onNavigateToVolunteerRequestList: () -> Unit,
     onNavigateToVolunteerDetails: () -> Unit,
+    onNavigateToSettings:() -> Unit,
     isInEmergencyScreen: Boolean
 ) {
     val auth = FirebaseAuth.getInstance()
@@ -211,6 +212,10 @@ fun EmergencyScreen(
                             onNavigateToVolunteerRequestList = {
                                 isDrawerOpen.value = false
                                 onNavigateToVolunteerRequestList()
+                            },
+                            onNavigateToSettings = {
+                                isDrawerOpen.value = false
+                                onNavigateToSettings()
                             }
                         )
                     }

@@ -43,6 +43,8 @@ vectordrawable = "1.2.0"
 generativeai = "0.9.0"
 firebaseStorageKtx = "21.0.1"
 firebaseStorage = "21.0.1"  # Latest version at the time of writing
+firebaseMessaging = "23.2.1"  # Firebase Messaging latest stable version
+
 
 [libraries]
 # Core dependencies
@@ -52,6 +54,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-espresso-core-v350 = { module = "androidx.test.espresso:espresso-core", version.ref = "espressoCoreVersion" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
 google-firebase-auth-ktx = { module = "com.google.firebase:firebase-auth-ktx" }
 google-firebase-firestore-ktx = { module = "com.google.firebase:firebase-firestore-ktx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

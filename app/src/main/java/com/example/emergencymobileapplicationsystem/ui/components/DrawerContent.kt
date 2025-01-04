@@ -3,11 +3,7 @@ package com.example.emergencymobileapplicationsystem.ui.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Feedback
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Login
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,20 +19,21 @@ fun DrawerContent(
     onNavigateToFeedback: () -> Unit,
     onCreateAccount: () -> Unit,
     isLoggedIn: Boolean,
-    isVolunteer: Boolean, // New parameter to determine if the user is a registered volunteer
+    isVolunteer: Boolean,
     onLogin: () -> Unit,
-    onSignOut: () -> Unit, // Updated to handle navigation after signing out
+    onSignOut: () -> Unit,
     onManageProfile: () -> Unit,
     onNavigateToEmergencyServiceInformation: () -> Unit,
     onNavigateToReportListScreen: () -> Unit,
     onNavigateToVolunteerDetails: () -> Unit,
-    onNavigateToVolunteerRequestList: () -> Unit // Callback for navigating to the Volunteer Request List
+    onNavigateToVolunteerRequestList: () -> Unit,
+    onNavigateToSettings: () -> Unit // New Callback for Settings Screen
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp), // Space between items
+        verticalArrangement = Arrangement.spacedBy(20.dp),
         horizontalAlignment = Alignment.Start
     ) {
         // Emergency Service Button
@@ -73,12 +70,12 @@ fun DrawerContent(
                 onClick = onManageProfile
             )
             DrawerRow(
-                icon = Icons.Default.AccountCircle, // Replace with appropriate icons
+                icon = Icons.Default.ListAlt, // Icon for Report List
                 label = "Report List",
                 onClick = onNavigateToReportListScreen
             )
             DrawerRow(
-                icon = Icons.Default.AccountCircle, // Replace with appropriate icons
+                icon = Icons.Default.VolunteerActivism, // Icon for Volunteer Details
                 label = "Volunteer Details",
                 onClick = onNavigateToVolunteerDetails
             )
@@ -86,12 +83,20 @@ fun DrawerContent(
             // Conditional: Volunteer Request List for Registered Volunteers
             if (isVolunteer) {
                 DrawerRow(
-                    icon = Icons.Default.AccountCircle, // Replace with appropriate icons
+                    icon = Icons.Default.List, // Icon for Volunteer Request List
                     label = "Volunteer Request List",
                     onClick = onNavigateToVolunteerRequestList
                 )
             }
 
+            // Settings Button
+            DrawerRow(
+                icon = Icons.Default.Settings,
+                label = "Settings",
+                onClick = onNavigateToSettings
+            )
+
+            // Sign Out Button
             DrawerRow(
                 icon = Icons.Default.Logout,
                 label = "Sign Out",

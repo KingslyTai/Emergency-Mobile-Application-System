@@ -13,7 +13,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
@@ -27,7 +26,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.core.app.ActivityCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -39,9 +37,11 @@ import com.example.emergencymobileapplicationsystem.data.PlaceInfo
 import com.example.emergencymobileapplicationsystem.data.VolunteerRequest
 import com.example.emergencymobileapplicationsystem.repository.ProfileRepository
 import com.example.emergencymobileapplicationsystem.repository.VolunteerRepository
+import com.example.emergencymobileapplicationsystem.ui.screen.AcceptedRequestDetailsScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.AdditionalDetailsSuccessScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.ChatScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.CommentScreen
+import com.example.emergencymobileapplicationsystem.ui.screen.CompletedRequestsScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.CreateAdditionalDetailsScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.CreateEmergencyInfoScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.CreateEmergencyInfoSuccessScreen
@@ -49,6 +49,7 @@ import com.example.emergencymobileapplicationsystem.ui.screen.CreateFeedbackScre
 import com.example.emergencymobileapplicationsystem.ui.screen.CreateProfileScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.CreateProfileSuccessScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.CreateVolunteerScreen
+import com.example.emergencymobileapplicationsystem.ui.screen.CreatedRequestsScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.EditAdditionalDetailsScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.EditEmergencyInfoScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.EditProfileScreen
@@ -60,6 +61,7 @@ import com.example.emergencymobileapplicationsystem.ui.screen.RegisteredUserFeed
 import com.example.emergencymobileapplicationsystem.ui.screen.ReportHistoryScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.ReportListScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.ReportScreen
+import com.example.emergencymobileapplicationsystem.ui.screen.SettingsScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.SpecificUserHomeScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.SpecificUserLocationScreen
 import com.example.emergencymobileapplicationsystem.ui.screen.ViewCommentsScreen
@@ -78,8 +80,10 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.launch
 import volunteerRepository
+import java.util.Locale
 
 private const val PREFERENCES_NAME = "BlockedLocationsPrefs"
 private const val BLOCKED_LOCATIONS_KEY = "blocked_locations"
@@ -127,6 +131,8 @@ class MainActivity : ComponentActivity() {
 
         auth = FirebaseAuth.getInstance()
 
+        generateAndSaveFcmToken()
+
         setContent {
             navController = rememberNavController()
 
@@ -136,6 +142,8 @@ class MainActivity : ComponentActivity() {
                 remember { mutableStateListOf<String>().apply { addAll(loadBlockedLocations(this@MainActivity)) } }
             val isDrawerOpen = remember { mutableStateOf(false) }
             val coroutineScope = rememberCoroutineScope()
+            var isDarkModeEnabled by remember { mutableStateOf(false) }
+
 
             DisposableEffect(auth) {
                 val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
@@ -148,7 +156,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            EmergencyMobileApplicationSystemTheme {
+            EmergencyMobileApplicationSystemTheme(darkTheme = isDarkModeEnabled) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     NavHost(
                         navController = navController,
@@ -229,6 +237,9 @@ class MainActivity : ComponentActivity() {
                                     // Navigate to the Volunteer Request List Screen
                                     navController.navigate("volunteerRequestListScreen")
                                 },
+                                onNavigateToSettings = {
+                                    navController.navigate("settingsScreen")
+                                },
                                 isInEmergencyScreen = true
                             )
                         }
@@ -256,10 +267,6 @@ class MainActivity : ComponentActivity() {
                                 // Volunteer Request List Navigation
                                 onNavigateToVolunteerRequestList = {
                                     navController.navigate("volunteerRequestListScreen")
-                                },
-                                // Volunteer Request Details Navigation with Placeholder ID
-                                onNavigateToVolunteerRequestDetails = { requestId ->
-                                    navController.navigate("volunteerRequestDetailsScreen/$requestId")
                                 },
                                 isInEmergencyScreen = false,
                                 // Navigate to Feedback Screen
@@ -298,6 +305,18 @@ class MainActivity : ComponentActivity() {
                                 // Navigate to Volunteer Details Screen
                                 onNavigateToVolunteerDetails = {
                                     navController.navigate("volunteerDetailsScreen")
+                                },
+                                onNavigateToAcceptedRequestDetails = {
+                                    navController.navigate("acceptedRequestDetailsScreen")
+                                },
+                                onNavigateToCompletedRequests = {
+                                    navController.navigate("completedRequestScreen")
+                                },
+                                onNavigateToCreatedRequests = {
+                                    navController.navigate("createdRequestsScreen")
+                                },
+                                onNavigateToSettings = {
+                                    navController.navigate("settingsScreen")
                                 }
                             )
                         }
@@ -319,76 +338,77 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        composable("settingsScreen") {
+                            SettingsScreen(
+                                onNavigateBack = { navController.popBackStack() },
+                                onLogout = { /* Handle logout */ },
+                                onNavigateToAccountSettings = { navController.navigate("accountSettings") },
+                                isDarkModeEnabled = isDarkModeEnabled,
+                                onDarkModeToggle = { isDarkModeEnabled = it },
+                                        onLanguageChange = { newLanguage ->
+                                            // Handle language change logic
+                                            setAppLanguage(newLanguage)
+                                        }
+                            )
+                        }
+
+
+                        composable("completedRequestScreen") {
+                            CompletedRequestsScreen(
+                                onBack = {
+                                    navController.popBackStack() // Navigate back to Volunteer Service Screen
+                                }
+                            )
+                        }
+
+                        composable("createdRequestsScreen") {
+                            CreatedRequestsScreen(
+                                onBack = {
+                                    navController.popBackStack() // Navigate back to Volunteer Service Screen
+                                }
+                            )
+                        }
+                        
                         composable(
                             route = "volunteerRequestDetailsScreen/{requestId}",
                             arguments = listOf(navArgument("requestId") { type = NavType.StringType })
                         ) { backStackEntry ->
                             val requestId = backStackEntry.arguments?.getString("requestId")
 
-                            Log.d("Navigation", "Request ID received in details screen: $requestId")
-
                             if (requestId != null) {
                                 var request by remember { mutableStateOf<VolunteerRequest?>(null) }
-                                var isLoading by remember { mutableStateOf(true) }
-                                var errorMessage by remember { mutableStateOf<String?>(null) }
                                 val volunteerRepository = VolunteerRepository()
 
                                 LaunchedEffect(requestId) {
-                                    try {
-                                        Log.d("DataFetching", "Fetching request for ID: $requestId")
-                                        volunteerRepository.getVolunteerRequestById(requestId) { fetchedRequest ->
-                                            request = fetchedRequest
-                                            Log.d("DataFetching", "Fetched request: $fetchedRequest")
-                                            isLoading = false
-                                        }
-                                    } catch (e: Exception) {
-                                        Log.e("DataFetching", "Error fetching request: ${e.message}")
-                                        errorMessage = "Failed to fetch request details."
-                                        isLoading = false
+                                    volunteerRepository.getVolunteerRequestById(requestId) { fetchedRequest ->
+                                        request = fetchedRequest
                                     }
                                 }
 
-                                if (isLoading) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator()
-                                    }
-                                } else if (errorMessage != null) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(text = errorMessage ?: "An unknown error occurred.", color = Color.Red)
-                                    }
-                                } else if (request != null) {
+                                if (request != null) {
                                     VolunteerRequestDetailsScreen(
                                         request = request,
-                                        onBack = {
-                                            navController.popBackStack()
-                                        },
+                                        onBack = { navController.popBackStack() },
                                         onNavigateToViewProfile = { userId ->
                                             navController.navigate("viewProfileScreen/$userId")
                                         }
                                     )
                                 } else {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("Error: Request not found.")
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text("Request not found.")
                                     }
-                                }
-                            } else {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("Error: Invalid request ID.")
                                 }
                             }
                         }
+
+                        composable("acceptedRequestDetailsScreen") {
+                            AcceptedRequestDetailsScreen(
+                                onBack = {
+                                    navController.popBackStack() // Navigate back to Volunteer Service Screen
+                                }
+                            )
+                        }
+
 
                         composable(
                             route = "viewProfileScreen/{userId}",
@@ -875,6 +895,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun setAppLanguage(language: String) {
+        val locale = when (language) {
+            "English" -> Locale("en")
+            "Spanish" -> Locale("es")
+            "French" -> Locale("fr")
+            "Chinese" -> Locale("zh")
+            else -> Locale.getDefault()
+        }
+        Locale.setDefault(locale)
+        val config = resources.configuration
+        config.setLocale(locale)
+        resources.updateConfiguration(config, resources.displayMetrics)
+        recreate() // Optional: Restart activity to apply changes
+    }
+
+
     // Function to submit a request to Firestore
     private fun submitRequestToFirestore(
         request: VolunteerRequest,
@@ -1133,5 +1169,30 @@ class MainActivity : ComponentActivity() {
             .addOnFailureListener { e ->
                 Log.e("MainActivity", "Failed to add feedback", e)
             }
+    }
+    private fun generateAndSaveFcmToken() {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (!task.isSuccessful) {
+                println("Fetching FCM token failed: ${task.exception}")
+                return@addOnCompleteListener
+            }
+
+            // Get new FCM token
+            val token = task.result
+            println("FCM Token: $token")
+
+            // Save token in Firestore (optional)
+            val userId = FirebaseAuth.getInstance().currentUser?.uid
+            userId?.let {
+                FirebaseFirestore.getInstance().collection("users").document(it)
+                    .update("fcmToken", token)
+                    .addOnSuccessListener {
+                        println("FCM token successfully saved!")
+                    }
+                    .addOnFailureListener {
+                        println("Failed to save FCM token: ${it.message}")
+                    }
+            }
+        }
     }
 }

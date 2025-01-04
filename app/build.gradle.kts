@@ -74,6 +74,7 @@ dependencies {
     implementation(libs.google.firebase.firestore.ktx)
     implementation(libs.firebase.database.ktx)
     implementation(libs.firebase.storage.ktx)
+    implementation(libs.firebase.messaging)
 
     // Core AndroidX dependencies
     implementation(libs.androidx.core.ktx)

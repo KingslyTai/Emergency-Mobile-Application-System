@@ -15,6 +15,7 @@ import com.google.firebase.auth.FirebaseAuth
 class AuthActivity : ComponentActivity() {
 
     private lateinit var auth: FirebaseAuth
+    private var isDarkModeEnabled = false // Dark mode toggle state
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,28 +26,24 @@ class AuthActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
 
-            EmergencyMobileApplicationSystemTheme {
+            EmergencyMobileApplicationSystemTheme(darkTheme = isDarkModeEnabled) {
                 Surface {
                     NavHost(
                         navController = navController,
                         startDestination = if (isRegister) "register" else "login"
                     ) {
-
-                        // Register screen
+                        // Register Screen
                         composable("register") {
                             RegisterScreen(
                                 navController = navController,
                                 onRegisterSuccess = {
-                                    // After successful registration, navigate back to MainActivity
-                                    startActivity(Intent(this@AuthActivity, MainActivity::class.java).apply {
-                                        putExtra("startDestination", "emergencyScreen")
-                                    })
-                                    finish() // Close AuthActivity after successful registration
+                                    // Navigate to MainActivity after successful registration
+                                    navigateToMainActivity("emergencyScreen")
                                 }
                             )
                         }
 
-                        // Login screen
+                        // Login Screen
                         composable("login") {
                             LoginScreen(
                                 navController = navController,
@@ -54,17 +51,14 @@ class AuthActivity : ComponentActivity() {
                                     val specificEmails = listOf("polis@gmail.com", "bomba@gmail.com")
                                     val currentUser = auth.currentUser
 
-                                    // Determine start destination based on user email
+                                    // Determine the start destination based on user email
                                     val startDestination = if (currentUser?.email in specificEmails) {
                                         "specificUserHomeScreen"
                                     } else {
                                         "emergencyScreen"
                                     }
 
-                                    startActivity(Intent(this@AuthActivity, MainActivity::class.java).apply {
-                                        putExtra("startDestination", startDestination)
-                                    })
-                                    finish()
+                                    navigateToMainActivity(startDestination)
                                 },
                                 onForgotPassword = {
                                     navController.navigate("forgotPassword")
@@ -72,7 +66,7 @@ class AuthActivity : ComponentActivity() {
                             )
                         }
 
-                        // Forgot password screen
+                        // Forgot Password Screen
                         composable("forgotPassword") {
                             ForgotPasswordScreen(
                                 navController = navController,
@@ -85,5 +79,15 @@ class AuthActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Navigates to MainActivity with the specified start destination.
+     */
+    private fun navigateToMainActivity(startDestination: String) {
+        startActivity(Intent(this@AuthActivity, MainActivity::class.java).apply {
+            putExtra("startDestination", startDestination)
+        })
+        finish() // Close AuthActivity after navigation
     }
 }

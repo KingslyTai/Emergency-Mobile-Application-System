@@ -32,7 +32,7 @@ fun VolunteerRequestListScreen(
     LaunchedEffect(Unit) {
         volunteerRepository.getAllVolunteerRequests { fetchedRequests ->
             // Filter out requests that already have an assigned volunteer
-            val unassignedRequests = fetchedRequests.filter { it.assignedVolunteer == null }
+            val unassignedRequests = fetchedRequests.filter { it.assignedVolunteer.isNullOrEmpty() }
             if (unassignedRequests.isNotEmpty()) {
                 requests.value = unassignedRequests
                 errorMessage.value = null

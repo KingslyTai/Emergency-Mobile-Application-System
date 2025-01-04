@@ -1,7 +1,10 @@
 package com.example.emergencymobileapplicationsystem.ui.screen
 
 import BottomNavigationRow
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
@@ -38,7 +41,10 @@ fun VolunteerServiceScreen(
     onNavigateToReportListScreen: () -> Unit,
     onNavigateToVolunteerDetails: () -> Unit,
     onNavigateToVolunteerRequestList: () -> Unit,
-    onNavigateToVolunteerRequestDetails: (VolunteerRequest) -> Unit // Pass selected request to navigate to its details
+    onNavigateToAcceptedRequestDetails: () -> Unit,
+    onNavigateToCompletedRequests: () -> Unit,
+    onNavigateToCreatedRequests: () -> Unit,
+    onNavigateToSettings:() -> Unit
 ) {
     val auth = FirebaseAuth.getInstance()
     val firestore = FirebaseFirestore.getInstance()
@@ -47,20 +53,19 @@ fun VolunteerServiceScreen(
     val isRegistered = remember { mutableStateOf(false) }
     val isPending = remember { mutableStateOf(false) }
 
-    // State for tracking the accepted request
     var acceptedRequest by remember { mutableStateOf<VolunteerRequest?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(auth.currentUser?.uid) {
+    LaunchedEffect(Unit) {
         val userId = auth.currentUser?.uid
         if (userId != null) {
-            // Check volunteer registration
+            isLoading = true
+
             volunteerRepository.checkVolunteerRegistration(userId) { registered, _ ->
                 isRegistered.value = registered
             }
 
-            // Check pending applications
             firestore.collection("pendingVolunteers").document(userId)
                 .get()
                 .addOnSuccessListener { document ->
@@ -69,13 +74,17 @@ fun VolunteerServiceScreen(
                     }
                 }
 
-            // Fetch accepted volunteer request
             firestore.collection("volunteerRequests")
                 .whereEqualTo("assignedVolunteer", userId)
                 .get()
                 .addOnSuccessListener { documents ->
                     if (!documents.isEmpty) {
-                        acceptedRequest = documents.documents[0].toObject(VolunteerRequest::class.java)
+                        val fetchedRequest =
+                            documents.documents[0].toObject(VolunteerRequest::class.java)
+                        if (fetchedRequest != null) {
+                            fetchedRequest.requestId = documents.documents[0].id
+                        }
+                        acceptedRequest = fetchedRequest
                         errorMessage = null
                     } else {
                         acceptedRequest = null
@@ -100,7 +109,7 @@ fun VolunteerServiceScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = 56.dp),
+                    .padding(horizontal = 16.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Top
             ) {
@@ -114,98 +123,66 @@ fun VolunteerServiceScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 100.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Button(
-                        onClick = onRequestVolunteerService,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        modifier = Modifier.padding(16.dp)
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(
-                            text = "Request Volunteer Service",
-                            fontSize = 18.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    if (isPending.value) {
-                        Button(
-                            onClick = onNavigateToStatusScreen,
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Check Volunteer Application Status",
-                                fontSize = 18.sp,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                        item {
+                            ActionCard(
+                                text = "Request Volunteer Service",
+                                onClick = onRequestVolunteerService
                             )
                         }
-                    } else if (!isRegistered.value) {
-                        Button(
-                            onClick = onRegisterAsVolunteer,
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(
-                                text = "Register as a Volunteer",
-                                fontSize = 18.sp,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            acceptedRequest?.let {
-                                onNavigateToVolunteerRequestDetails(it)
+                        if (isPending.value) {
+                            item {
+                                ActionCard(
+                                    text = "Check Volunteer Application Status",
+                                    onClick = onNavigateToStatusScreen
+                                )
                             }
-                        },
-                        enabled = acceptedRequest != null,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        } else {
-                            Text(
-                                text = if (acceptedRequest != null) "View Accepted Request" else "No Accepted Request",
-                                fontSize = 18.sp,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                        } else if (!isRegistered.value) {
+                            item {
+                                ActionCard(
+                                    text = "Register as a Volunteer",
+                                    onClick = onRegisterAsVolunteer
+                                )
+                            }
+                        }
+
+                        item {
+                            ActionCard(
+                                text = "View Accepted Request",
+                                onClick = onNavigateToAcceptedRequestDetails
                             )
                         }
-                    }
 
-                    errorMessage?.let {
-                        Text(
-                            text = it,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
+                        item {
+                            ActionCard(
+                                text = "Volunteer Request List",
+                                onClick = onNavigateToVolunteerRequestList
+                            )
+                        }
 
-                    Button(
-                        onClick = onNavigateToVolunteerRequestList,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Volunteer Request List",
-                            fontSize = 16.sp,
-                            color = Color.White
-                        )
+                        item {
+                            ActionCard(
+                                text = "View Created Requests",
+                                onClick = onNavigateToCreatedRequests
+                            )
+                        }
+
+                        item {
+                            ActionCard(
+                                text = "View Completed Requests",
+                                onClick = onNavigateToCompletedRequests
+                            )
+                        }
                     }
                 }
             }
@@ -271,12 +248,40 @@ fun VolunteerServiceScreen(
                                 onNavigateToVolunteerRequestList = {
                                     isDrawerOpen.value = false
                                     onNavigateToVolunteerRequestList()
+                                },
+                                onNavigateToSettings = {
+                                    isDrawerOpen.value = false
+                                    onNavigateToSettings()
                                 }
                             )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ActionCard(text: String, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(60.dp)
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Text(
+                text = text,
+                fontSize = 18.sp,
+                color = Color.White,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
